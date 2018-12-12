@@ -18,10 +18,8 @@ import com.mapbox.mapboxsdk.geometry.LatLng;
 import com.mapbox.mapboxsdk.geometry.LatLngBounds;
 import com.mapbox.mapboxsdk.style.layers.TransitionOptions;
 import com.mapbox.mapboxsdk.testapp.R;
-import com.mapbox.mapboxsdk.testapp.activity.BaseActivityTest;
-import com.mapbox.mapboxsdk.testapp.activity.espresso.EspressoTestActivity;
+import com.mapbox.mapboxsdk.testapp.activity.EspressoActivityTest;
 import com.mapbox.mapboxsdk.testapp.utils.TestConstants;
-import com.mapbox.mapboxsdk.testapp.utils.ViewUtils;
 import org.hamcrest.Matcher;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -46,12 +44,7 @@ import static org.junit.Assert.assertTrue;
  * with the application UI-thread.
  * </p>
  */
-public class MapboxMapTest extends BaseActivityTest {
-
-  @Override
-  protected Class getActivityClass() {
-    return EspressoTestActivity.class;
-  }
+public class MapboxMapTest extends EspressoActivityTest {
 
   @Test
   public void testSanity() {
@@ -98,7 +91,7 @@ public class MapboxMapTest extends BaseActivityTest {
   //
   @Test
   public void testCameraPositionOnFinish() {
-    ViewUtils.checkViewIsDisplayed(R.id.mapView);
+    checkViewIsDisplayed(R.id.mapView);
     onView(withId(R.id.mapView)).perform(new MapboxMapAction((uiController, view) -> {
 
       final LatLng latLng = new LatLng(30.0, 30.0);
@@ -120,7 +113,7 @@ public class MapboxMapTest extends BaseActivityTest {
 
   @Test
   public void testCameraForLatLngBounds() {
-    ViewUtils.checkViewIsDisplayed(R.id.mapView);
+    checkViewIsDisplayed(R.id.mapView);
     onView(withId(R.id.mapView)).perform(new MapboxMapAction((uiController, view) -> {
       // set
       mapboxMap.setLatLngBoundsForCameraTarget(

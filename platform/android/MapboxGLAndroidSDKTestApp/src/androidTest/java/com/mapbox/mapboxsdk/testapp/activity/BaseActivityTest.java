@@ -1,10 +1,7 @@
 package com.mapbox.mapboxsdk.testapp.activity;
 
 import android.app.Activity;
-import android.support.test.espresso.Espresso;
-import android.support.test.espresso.IdlingRegistry;
-import android.support.test.espresso.IdlingResourceTimeoutException;
-import android.support.test.espresso.ViewInteraction;
+import android.support.test.espresso.*;
 import android.support.test.rule.ActivityTestRule;
 
 import com.mapbox.mapboxsdk.Mapbox;
@@ -12,8 +9,9 @@ import com.mapbox.mapboxsdk.maps.MapboxMap;
 import com.mapbox.mapboxsdk.testapp.R;
 import com.mapbox.mapboxsdk.testapp.action.MapboxMapAction;
 import com.mapbox.mapboxsdk.testapp.action.WaitAction;
-import com.mapbox.mapboxsdk.testapp.utils.OnMapReadyIdlingResource;
+import com.mapbox.mapboxsdk.testapp.utils.FinishLoadingStyleIdlingResource;
 
+import com.mapbox.mapboxsdk.testapp.utils.MapboxIdlingResource;
 import junit.framework.Assert;
 
 import org.junit.After;
@@ -28,6 +26,9 @@ import static android.support.test.espresso.assertion.ViewAssertions.matches;
 import static android.support.test.espresso.matcher.ViewMatchers.isDisplayed;
 import static android.support.test.espresso.matcher.ViewMatchers.withId;
 
+/**
+ * Base class for all Activity test hooking into an existing Activity that will load style.
+ */
 public abstract class BaseActivityTest {
 
   @Rule
@@ -37,7 +38,7 @@ public abstract class BaseActivityTest {
   public TestName testNameRule = new TestName();
 
   protected MapboxMap mapboxMap;
-  protected OnMapReadyIdlingResource idlingResource;
+  protected MapboxIdlingResource idlingResource;
 
   @Before
   public void beforeTest() {
@@ -48,17 +49,23 @@ public abstract class BaseActivityTest {
         testNameRule.getMethodName(),
         "@Before test: register idle resource"
       ));
-      idlingResource = new OnMapReadyIdlingResource(rule.getActivity());
+      idlingResource = (MapboxIdlingResource) generateIdlingResource();
       IdlingRegistry.getInstance().register(idlingResource);
       Espresso.onIdle();
       mapboxMap = idlingResource.getMapboxMap();
     } catch (IdlingResourceTimeoutException idlingResourceTimeoutException) {
-      throw new RuntimeException(String.format("Could not start %s test for %s.\n  Either the ViewHierarchy doesn't "
-          + "contain a view with resource id = R.id.mapView or \n the hosting Activity wasn't in an idle state.",
-        testNameRule.getMethodName(),
-        getActivityClass().getSimpleName())
+      throw new RuntimeException(
+        String.format(
+          "Could not start %s test for %s.",
+          testNameRule.getMethodName(),
+          getActivityClass().getSimpleName()
+        )
       );
     }
+  }
+
+  protected IdlingResource generateIdlingResource() {
+    return new FinishLoadingStyleIdlingResource(rule.getActivity());
   }
 
   protected void validateTestSetup() {
