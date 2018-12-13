@@ -1,11 +1,16 @@
 package com.mapbox.mapboxsdk.location
 
+import android.animation.Animator
 import android.location.Location
+import android.view.animation.LinearInterpolator
 import com.mapbox.mapboxsdk.camera.CameraPosition
 import com.mapbox.mapboxsdk.geometry.LatLng
 import com.mapbox.mapboxsdk.location.LocationComponentConstants.DEFAULT_TRACKING_TILT_ANIM_DURATION
 import com.mapbox.mapboxsdk.location.LocationComponentConstants.DEFAULT_TRACKING_ZOOM_ANIM_DURATION
 import com.mapbox.mapboxsdk.location.MapboxAnimator.*
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.verify
 import junit.framework.Assert.assertEquals
 import junit.framework.Assert.assertTrue
 import org.junit.Before
@@ -20,9 +25,12 @@ class LocationAnimatorCoordinatorTest {
   private lateinit var locationAnimatorCoordinator: LocationAnimatorCoordinator
   private val cameraPosition: CameraPosition = CameraPosition.DEFAULT
 
+  private val animatorSetProvider: MapboxAnimatorSetProvider = mockk()
+
   @Before
   fun setUp() {
-    locationAnimatorCoordinator = LocationAnimatorCoordinator()
+    locationAnimatorCoordinator = LocationAnimatorCoordinator(animatorSetProvider)
+    every { animatorSetProvider.startAnimation(any(), any(), any()) } answers {}
   }
 
   @Test
@@ -125,9 +133,6 @@ class LocationAnimatorCoordinatorTest {
 
     val layerAccuracy = locationAnimatorCoordinator.animatorArray[ANIMATOR_LAYER_ACCURACY]?.target as Float
     assertEquals(layerAccuracy, accuracy)
-
-    val animationDuration = locationAnimatorCoordinator.animatorArray[ANIMATOR_LAYER_ACCURACY]?.duration as Long
-    assertEquals(LocationComponentConstants.ACCURACY_RADIUS_ANIMATION_DURATION, animationDuration)
   }
 
   @Test
@@ -144,9 +149,6 @@ class LocationAnimatorCoordinatorTest {
 
     val layerAccuracy = locationAnimatorCoordinator.animatorArray[ANIMATOR_LAYER_ACCURACY]?.target as Float
     assertEquals(layerAccuracy, accuracy)
-
-    val animationDuration = locationAnimatorCoordinator.animatorArray[ANIMATOR_LAYER_ACCURACY]?.duration as Long
-    assertEquals(0L, animationDuration)
   }
 
   @Test
@@ -280,5 +282,51 @@ class LocationAnimatorCoordinatorTest {
     locationAnimatorCoordinator.removeCameraListener(cameraListener)
 
     assertTrue(locationAnimatorCoordinator.cameraListeners.isEmpty())
+  }
+
+  @Test
+  fun feedNewCompassBearing_withAnimation() {
+    locationAnimatorCoordinator.setCompassAnimationEnabled(true)
+    locationAnimatorCoordinator.feedNewCompassBearing(77f, cameraPosition)
+
+    val animators = mutableListOf<Animator>(
+      locationAnimatorCoordinator.animatorArray[ANIMATOR_LAYER_COMPASS_BEARING],
+      locationAnimatorCoordinator.animatorArray[ANIMATOR_CAMERA_COMPASS_BEARING])
+
+    verify(exactly = 1) { animatorSetProvider.startAnimation(eq(animators), ofType(LinearInterpolator::class), eq(LocationComponentConstants.COMPASS_UPDATE_RATE_MS)) }
+  }
+
+  @Test
+  fun feedNewCompassBearing_withoutAnimation() {
+    locationAnimatorCoordinator.setCompassAnimationEnabled(false)
+    locationAnimatorCoordinator.feedNewCompassBearing(77f, cameraPosition)
+
+    val animators = mutableListOf<Animator>(
+      locationAnimatorCoordinator.animatorArray[ANIMATOR_LAYER_COMPASS_BEARING],
+      locationAnimatorCoordinator.animatorArray[ANIMATOR_CAMERA_COMPASS_BEARING])
+
+    verify(exactly = 1) { animatorSetProvider.startAnimation(eq(animators), ofType(LinearInterpolator::class), eq(0)) }
+  }
+
+  @Test
+  fun feedNewAccuracy_withAnimation() {
+    locationAnimatorCoordinator.setAccuracyAnimationEnabled(true)
+    locationAnimatorCoordinator.feedNewAccuracyRadius(150f, false)
+
+    val animators = mutableListOf<Animator>(
+      locationAnimatorCoordinator.animatorArray[ANIMATOR_LAYER_ACCURACY])
+
+    verify(exactly = 1) { animatorSetProvider.startAnimation(eq(animators), ofType(LinearInterpolator::class), eq(LocationComponentConstants.ACCURACY_RADIUS_ANIMATION_DURATION)) }
+  }
+
+  @Test
+  fun feedNewAccuracy_withoutAnimation() {
+    locationAnimatorCoordinator.setAccuracyAnimationEnabled(false)
+    locationAnimatorCoordinator.feedNewAccuracyRadius(150f, false)
+
+    val animators = mutableListOf<Animator>(
+      locationAnimatorCoordinator.animatorArray[ANIMATOR_LAYER_ACCURACY])
+
+    verify(exactly = 1) { animatorSetProvider.startAnimation(eq(animators), ofType(LinearInterpolator::class), eq(0)) }
   }
 }
